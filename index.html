@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大阪 電気・ガス 最安組み合わせ比較</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>大阪 電気・ガス 最安比較</h1>
+            <p class="subtitle">電気とガスの組み合わせで一番安いプランを見つけよう</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- 入力セクション -->
+        <section class="input-section">
+            <h2>使用量を入力</h2>
+            <div class="help-box">
+                <p class="help-text">使用量がわからない場合は、世帯人数を選ぶと平均的な使用量が自動入力されます。</p>
+            </div>
+            <div class="preset-row">
+                <span class="preset-label">世帯人数：</span>
+                <div class="preset-buttons">
+                    <button class="preset-btn" data-persons="1">1人暮らし</button>
+                    <button class="preset-btn active" data-persons="2">2人</button>
+                    <button class="preset-btn" data-persons="3">3人</button>
+                    <button class="preset-btn" data-persons="4">4人以上</button>
+                </div>
+            </div>
+            <div class="input-grid">
+                <div class="input-card">
+                    <label class="input-label">電気使用量</label>
+                    <input type="range" id="kwh-slider" min="50" max="800" step="10" value="250">
+                    <div class="input-value-row">
+                        <input type="number" id="kwh-input" min="0" max="2000" value="250">
+                        <span class="unit">kWh / 月</span>
+                    </div>
+                    <p class="input-hint" id="kwh-hint">1人暮らし平均：約170kWh</p>
+                </div>
+                <div class="input-card">
+                    <label class="input-label">ガス使用量</label>
+                    <input type="range" id="m3-slider" min="0" max="150" step="1" value="28">
+                    <div class="input-value-row">
+                        <input type="number" id="m3-input" min="0" max="500" value="28">
+                        <span class="unit">m3 / 月</span>
+                    </div>
+                    <p class="input-hint" id="m3-hint">1人暮らし平均：約17m3</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 最安の組み合わせ -->
+        <section id="best-section" class="best-section">
+            <div id="best-card" class="best-card"></div>
+        </section>
+
+        <!-- 全組み合わせチャート -->
+        <section class="chart-section">
+            <h2>全組み合わせ 月額比較</h2>
+            <div class="chart-container chart-combination">
+                <canvas id="combination-chart"></canvas>
+            </div>
+        </section>
+
+        <!-- 個別比較チャート -->
+        <section class="chart-section">
+            <h2>電気・ガス 個別比較</h2>
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <h3>電気料金</h3>
+                    <canvas id="electricity-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>ガス料金</h3>
+                    <canvas id="gas-chart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 年間コストチャート -->
+        <section class="chart-section">
+            <h2>年間コスト比較（上位5組み合わせ）</h2>
+            <div class="chart-container">
+                <canvas id="annual-chart"></canvas>
+            </div>
+        </section>
+
+        <!-- 結果テーブル -->
+        <section class="table-section">
+            <h2>全組み合わせ一覧</h2>
+            <div class="table-wrapper">
+                <table id="results-table">
+                    <thead>
+                        <tr>
+                            <th>順位</th>
+                            <th>電力会社</th>
+                            <th>ガス会社</th>
+                            <th>電気代</th>
+                            <th>ガス代</th>
+                            <th>セット割</th>
+                            <th>月額合計</th>
+                            <th>年額合計</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 料金ソース・出典 -->
+        <section class="sources-section">
+            <h2>料金データの出典・単価詳細</h2>
+            <p class="sources-description">
+                計算に使用している単価の詳細と、各社公式ページへのリンクです。正確な最新料金は各リンク先でご確認ください。
+            </p>
+            <div id="sources-container"></div>
+        </section>
+
+        <!-- 注意事項 -->
+        <section class="notes-section">
+            <h2>注意事項</h2>
+            <ul>
+                <li>料金は概算の参考値です。燃料費調整額・再エネ賦課金は含まれていません。</li>
+                <li>実際の料金は時期や使用状況により異なります。契約前に各社の公式サイトをご確認ください。</li>
+                <li>auでんきのポイント還元は実質割引として概算計算しています。</li>
+                <li>セット割引は代表的なものを掲載しています。他にも割引がある場合があります。</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>※ このシミュレーターは参考用です。正確な料金は各事業者にお問い合わせください。</p>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
