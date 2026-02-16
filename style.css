@@ -336,7 +336,7 @@ input[type="number"]:focus {
 }
 
 .chart-combination {
-    min-height: 420px;
+    min-height: 520px;
 }
 
 .chart-grid {
@@ -525,6 +525,15 @@ tbody tr.rank-1:hover {
 .source-link:hover {
     color: var(--primary);
     border-bottom-style: solid;
+}
+
+.source-note {
+    font-size: 0.8rem;
+    color: #c62828;
+    background: #fce4ec;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 8px;
 }
 
 .source-detail {

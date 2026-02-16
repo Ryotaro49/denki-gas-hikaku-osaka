@@ -1,13 +1,14 @@
 'use strict';
 
 // ===== 電力会社データ（関西エリア） =====
+// 料金は基準単位料金（税込）。燃料費調整額・再エネ賦課金は含まない。
 const ELECTRICITY_PROVIDERS = [
     {
         id: 'kepco',
         name: '関西電力',
         plan: '従量電灯A',
         color: '#D32F2F',
-        source: 'https://kepco.jp/ryokin/menu/juuryou_a/',
+        source: 'https://kepco.jp/ryokin/unitprice/',
         rates: [
             { label: '最低料金（〜15kWh）', value: '522.58円' },
             { label: '15〜120kWh', value: '20.21円/kWh' },
@@ -26,21 +27,54 @@ const ELECTRICITY_PROVIDERS = [
     {
         id: 'osakagas_elec',
         name: '大阪ガスの電気',
-        plan: 'ベースプランA-G',
+        plan: 'ベースプランA-G / A',
         color: '#1565C0',
-        source: 'https://ene.osakagas.co.jp/electricity/menu/menu_base.html',
+        source: 'https://home.osakagas.co.jp/energy/electricity/price/plan_ag/',
+        note: 'A-Gプランは大阪ガスのガス契約が必要。他社ガスの場合はベースプランA（やや割高）が適用。',
         rates: [
-            { label: '最低料金（〜15kWh）', value: '522.58円' },
+            { label: '最低料金（〜15kWh）', value: '466.57円' },
             { label: '15〜120kWh', value: '20.21円/kWh' },
-            { label: '120〜300kWh', value: '24.80円/kWh' },
-            { label: '300kWh〜', value: '27.72円/kWh' }
+            { label: '120〜350kWh（A-G）', value: '24.80円/kWh' },
+            { label: '120〜350kWh（A）', value: '25.20円/kWh' },
+            { label: '350kWh〜（A-G）', value: '27.72円/kWh' },
+            { label: '350kWh〜（A）', value: '28.01円/kWh' }
+        ],
+        // gasId を受け取り、大阪ガスとのセットかどうかで料金を切り替え
+        calculate(kwh, gasId) {
+            const isGasSet = gasId === 'osakagas';
+            if (kwh <= 15) return 466.57;
+            let cost = 466.57;
+            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
+            if (isGasSet) {
+                cost += Math.min(Math.max(kwh - 120, 0), 230) * 24.80;
+                cost += Math.max(kwh - 350, 0) * 27.72;
+            } else {
+                cost += Math.min(Math.max(kwh - 120, 0), 230) * 25.20;
+                cost += Math.max(kwh - 350, 0) * 28.01;
+            }
+            return cost;
+        }
+    },
+    {
+        id: 'octopus_elec',
+        name: 'オクトパスエナジー',
+        plan: 'グリーンオクトパス',
+        color: '#7B1FA2',
+        source: 'https://octopusenergy.co.jp/tariffs',
+        rates: [
+            { label: '基本料金', value: '12.40円/日（約372円/月）' },
+            { label: '0〜15kWh', value: '0.00円（無料）' },
+            { label: '16〜120kWh', value: '20.08円/kWh' },
+            { label: '121〜300kWh', value: '22.70円/kWh' },
+            { label: '301kWh〜', value: '26.61円/kWh' }
         ],
         calculate(kwh) {
-            if (kwh <= 15) return 522.58;
-            let cost = 522.58;
-            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
-            cost += Math.min(Math.max(kwh - 120, 0), 180) * 24.80;
-            cost += Math.max(kwh - 300, 0) * 27.72;
+            const baseCost = 12.40 * 30; // 基本料金（30日換算）
+            if (kwh <= 15) return baseCost; // 15kWhまで無料
+            let cost = baseCost;
+            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.08;
+            cost += Math.min(Math.max(kwh - 120, 0), 180) * 22.70;
+            cost += Math.max(kwh - 300, 0) * 26.61;
             return cost;
         }
     },
@@ -49,72 +83,75 @@ const ELECTRICITY_PROVIDERS = [
         name: 'auでんき',
         plan: 'でんきMプラン',
         color: '#E65100',
-        source: 'https://www.au.com/electricity/charge/m-plan/',
+        source: 'https://www.au.com/energy/denki/merit/plan/',
+        note: '料金単価は関西電力と同等。Pontaポイント還元あり。',
         rates: [
             { label: '最低料金（〜15kWh）', value: '522.58円' },
             { label: '15〜120kWh', value: '20.21円/kWh' },
             { label: '120〜300kWh', value: '25.61円/kWh' },
             { label: '300kWh〜', value: '28.59円/kWh' },
-            { label: 'Pontaポイント還元', value: '1〜5%相当' }
+            { label: 'Pontaポイント還元', value: '0.5%（8,000円以上は1%）' }
         ],
         calculate(kwh) {
-            // 基本料金は関西電力と同等
             if (kwh <= 15) return 522.58;
             let cost = 522.58;
             cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
             cost += Math.min(Math.max(kwh - 120, 0), 180) * 25.61;
             cost += Math.max(kwh - 300, 0) * 28.59;
             // Pontaポイント還元（実質割引として概算）
-            if (cost >= 8000) return cost * 0.95;
-            if (cost >= 5000) return cost * 0.97;
-            return cost * 0.99;
+            if (cost >= 8000) return cost * 0.99;
+            return cost * 0.995;
         }
     },
     {
         id: 'eo_elec',
         name: 'eo電気',
-        plan: 'スタンダードプラン',
+        plan: 'スタンダードプランK',
         color: '#2E7D32',
-        source: 'https://eonet.jp/denki/standard/',
+        source: 'https://eonet.jp/service/denki/charge/',
+        note: '2026年1月12日で新規受付終了',
         rates: [
-            { label: '最低料金（〜15kWh）', value: '522.58円' },
-            { label: '15〜120kWh', value: '20.21円/kWh' },
-            { label: '120〜300kWh', value: '25.01円/kWh' },
-            { label: '300kWh〜', value: '27.51円/kWh' }
+            { label: '最低料金（〜15kWh）', value: '518.25円' },
+            { label: '15〜120kWh', value: '20.01円/kWh' },
+            { label: '120〜300kWh', value: '25.35円/kWh' },
+            { label: '300kWh〜', value: '28.30円/kWh' }
         ],
         calculate(kwh) {
-            if (kwh <= 15) return 522.58;
-            let cost = 522.58;
-            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
-            cost += Math.min(Math.max(kwh - 120, 0), 180) * 25.01;
-            cost += Math.max(kwh - 300, 0) * 27.51;
+            if (kwh <= 15) return 518.25;
+            let cost = 518.25;
+            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.01;
+            cost += Math.min(Math.max(kwh - 120, 0), 180) * 25.35;
+            cost += Math.max(kwh - 300, 0) * 28.30;
             return cost;
         }
     }
 ];
 
 // ===== ガス会社データ（大阪ガスエリア） =====
-// 料金体系: 基本料金 + 使用量 × 従量単価（使用量に応じた段階制）
+// 料金体系: 基本料金 + 使用量 × 基準単位料金（使用量に応じた段階制）
+// 原料費調整額は含まない。
 const GAS_PROVIDERS = [
     {
         id: 'osakagas',
         name: '大阪ガス',
         plan: '一般料金',
         color: '#0277BD',
-        source: 'https://home.osakagas.co.jp/price/menu/general_rate.html',
+        source: 'https://home.osakagas.co.jp/energy/gas/general_rate/',
         rates: [
             { label: '0〜20m3', value: '基本759.00円 + 174.81円/m3' },
             { label: '20〜50m3', value: '基本1,364.81円 + 144.52円/m3' },
             { label: '50〜100m3', value: '基本1,635.74円 + 139.10円/m3' },
-            { label: '100〜250m3', value: '基本2,074.72円 + 134.71円/m3' }
+            { label: '100〜200m3', value: '基本2,074.72円 + 134.71円/m3' },
+            { label: '200〜350m3', value: '基本3,506.75円 + 127.55円/m3' }
         ],
         calculate(m3) {
             if (m3 <= 0) return 0;
             if (m3 <= 20) return 759.00 + m3 * 174.81;
             if (m3 <= 50) return 1364.81 + m3 * 144.52;
             if (m3 <= 100) return 1635.74 + m3 * 139.10;
-            if (m3 <= 250) return 2074.72 + m3 * 134.71;
-            return 2667.42 + m3 * 128.78;
+            if (m3 <= 200) return 2074.72 + m3 * 134.71;
+            if (m3 <= 350) return 3506.75 + m3 * 127.55;
+            return 3834.72 + m3 * 126.62;
         }
     },
     {
@@ -122,20 +159,23 @@ const GAS_PROVIDERS = [
         name: '関電ガス',
         plan: 'なっトクプラン',
         color: '#C62828',
-        source: 'https://kepco.jp/gas/plan/nattoku/',
+        source: 'https://kepco.jp/gas/menu_nattoku/',
+        note: '2025年12月改定料金。電気セット割引は廃止され料金に反映済み。',
         rates: [
-            { label: '0〜20m3', value: '基本758.90円 + 158.77円/m3' },
-            { label: '20〜50m3', value: '基本1,262.33円 + 133.66円/m3' },
-            { label: '50〜100m3', value: '基本1,266.83円 + 133.57円/m3' },
-            { label: '100〜250m3', value: '基本1,683.41円 + 129.40円/m3' }
+            { label: '0〜20m3', value: '基本735.13円 + 154.00円/m3' },
+            { label: '20〜50m3', value: '基本1,223.46円 + 129.65円/m3' },
+            { label: '50〜100m3', value: '基本1,227.82円 + 129.52円/m3' },
+            { label: '100〜200m3', value: '基本1,631.90円 + 125.45円/m3' },
+            { label: '200〜350m3', value: '基本2,951.03円 + 118.84円/m3' }
         ],
         calculate(m3) {
             if (m3 <= 0) return 0;
-            if (m3 <= 20) return 758.90 + m3 * 158.77;
-            if (m3 <= 50) return 1262.33 + m3 * 133.66;
-            if (m3 <= 100) return 1266.83 + m3 * 133.57;
-            if (m3 <= 250) return 1683.41 + m3 * 129.40;
-            return 2642.85 + m3 * 125.56;
+            if (m3 <= 20) return 735.13 + m3 * 154.00;
+            if (m3 <= 50) return 1223.46 + m3 * 129.65;
+            if (m3 <= 100) return 1227.82 + m3 * 129.52;
+            if (m3 <= 200) return 1631.90 + m3 * 125.45;
+            if (m3 <= 350) return 2951.03 + m3 * 118.84;
+            return 3251.86 + m3 * 117.96;
         }
     },
     {
@@ -143,45 +183,31 @@ const GAS_PROVIDERS = [
         name: 'エルピオ都市ガス',
         plan: 'スタンダードプラン',
         color: '#6A1B9A',
-        source: 'https://lpio.jp/gas/',
+        source: 'https://www.lpio.jp/city_gas/city_plan/',
         rates: [
-            { label: '0〜20m3', value: '基本758.90円 + 158.70円/m3' },
-            { label: '20〜50m3', value: '基本1,262.33円 + 133.53円/m3' },
-            { label: '50〜100m3', value: '基本1,266.83円 + 133.44円/m3' },
-            { label: '100〜250m3', value: '基本1,683.41円 + 129.27円/m3' }
+            { label: '0〜20m3', value: '基本720.29円 + 165.89円/m3' },
+            { label: '20〜50m3', value: '基本1,295.20円 + 137.15円/m3' },
+            { label: '50〜100m3', value: '基本1,568.67円 + 133.40円/m3' },
+            { label: '100〜200m3', value: '基本1,989.66円 + 129.19円/m3' },
+            { label: '200〜350m3', value: '基本3,398.04円 + 123.60円/m3' }
         ],
         calculate(m3) {
             if (m3 <= 0) return 0;
-            if (m3 <= 20) return 758.90 + m3 * 158.70;
-            if (m3 <= 50) return 1262.33 + m3 * 133.53;
-            if (m3 <= 100) return 1266.83 + m3 * 133.44;
-            if (m3 <= 250) return 1683.41 + m3 * 129.27;
-            return 2642.85 + m3 * 125.43;
+            if (m3 <= 20) return 720.29 + m3 * 165.89;
+            if (m3 <= 50) return 1295.20 + m3 * 137.15;
+            if (m3 <= 100) return 1568.67 + m3 * 133.40;
+            if (m3 <= 200) return 1989.66 + m3 * 129.19;
+            if (m3 <= 350) return 3398.04 + m3 * 123.60;
+            return 3715.84 + m3 * 122.69;
         }
     }
 ];
 
 // ===== セット割引 =====
-const SET_DISCOUNTS = [
-    {
-        elecId: 'osakagas_elec',
-        gasId: 'osakagas',
-        name: '大阪ガス セット割',
-        description: '電気代から3%割引',
-        apply(elecCost, gasCost) {
-            return { elec: elecCost * 0.97, gas: gasCost };
-        }
-    },
-    {
-        elecId: 'kepco',
-        gasId: 'kepco_gas',
-        name: 'なっトクパック',
-        description: 'ガス代から3%割引',
-        apply(elecCost, gasCost) {
-            return { elec: elecCost, gas: gasCost * 0.97 };
-        }
-    }
-];
+// 2025年12月以降:
+// - 関電ガス なっトクパックの電気セット割引は廃止（料金に反映済み）
+// - 大阪ガスの電気 A-G は大阪ガスのガス契約時の料金（calculate内で処理）
+const SET_DISCOUNTS = [];
 
 // ===== 世帯人数プリセット =====
 const HOUSEHOLD_PRESETS = {
@@ -216,32 +242,32 @@ function calculateCombinations(kwh, m3) {
 
     for (const elec of ELECTRICITY_PROVIDERS) {
         for (const gas of GAS_PROVIDERS) {
-            let elecCost = elec.calculate(kwh);
-            let gasCost = gas.calculate(m3);
-            let discount = null;
+            // 大阪ガスの電気は gasId を渡して A-G / A を切り替え
+            const elecCost = elec.calculate(kwh, gas.id);
+            const gasCost = gas.calculate(m3);
 
-            // セット割引を確認
-            const setDiscount = SET_DISCOUNTS.find(
-                d => d.elecId === elec.id && d.gasId === gas.id
-            );
-
-            if (setDiscount) {
-                const applied = setDiscount.apply(elecCost, gasCost);
-                discount = {
-                    name: setDiscount.name,
-                    description: setDiscount.description,
-                    amount: (elecCost + gasCost) - (applied.elec + applied.gas)
-                };
-                elecCost = applied.elec;
-                gasCost = applied.gas;
+            // 大阪ガスの電気 + 大阪ガスの場合のプラン表示
+            let elecPlanLabel = elec.plan;
+            let comboNote = '';
+            if (elec.id === 'osakagas_elec') {
+                if (gas.id === 'osakagas') {
+                    elecPlanLabel = 'ベースプランA-G';
+                } else {
+                    elecPlanLabel = 'ベースプランA';
+                }
+            }
+            if (elec.note) {
+                comboNote = elec.note;
             }
 
             results.push({
-                elec: elec,
-                gas: gas,
+                elec,
+                gas,
+                elecPlanLabel,
                 elecCost,
                 gasCost,
-                discount,
+                comboNote,
+                discount: null,
                 total: elecCost + gasCost
             });
         }
@@ -257,14 +283,6 @@ function renderBestCard(combinations) {
     const worst = combinations[combinations.length - 1];
     const annualSaving = (worst.total - best.total) * 12;
 
-    let discountHtml = '';
-    if (best.discount) {
-        discountHtml = `
-            <span class="set-discount-tag" style="margin-left:12px;">
-                ${best.discount.name}：-${formatYen(best.discount.amount)}円/月
-            </span>`;
-    }
-
     bestCard.innerHTML = `
         <div class="best-badge">最安</div>
         <div class="best-providers">
@@ -275,7 +293,6 @@ function renderBestCard(combinations) {
             <span class="best-provider-tag" style="background:${best.gas.color}">
                 ${best.gas.name}
             </span>
-            ${discountHtml}
         </div>
         <div class="best-price-row">
             <div class="best-total">
@@ -370,9 +387,10 @@ function renderCombinationChart(combinations) {
 // ===== 電気料金チャート =====
 function renderElectricityChart(kwh) {
     const ctx = document.getElementById('electricity-chart').getContext('2d');
+    // 電気単体比較では gasId なし（大阪ガスの電気はベースプランAで計算）
     const data = ELECTRICITY_PROVIDERS.map(p => ({
         name: p.name,
-        cost: Math.round(p.calculate(kwh)),
+        cost: Math.round(p.calculate(kwh, null)),
         color: p.color
     }));
     data.sort((a, b) => a.cost - b.cost);
@@ -510,18 +528,13 @@ function renderTable(combinations) {
         const rank = i + 1;
         const rankClass = rank <= 3 ? `rank-${rank}` : '';
 
-        const discountCell = c.discount
-            ? `<span class="set-discount-tag">${c.discount.name}<br>-${formatYen(c.discount.amount)}円</span>`
-            : `<span class="no-discount">-</span>`;
-
         return `
             <tr class="${rankClass}">
                 <td><span class="rank-badge">${rank}</span></td>
-                <td>${c.elec.name}<br><small style="color:#888">${c.elec.plan}</small></td>
+                <td>${c.elec.name}<br><small style="color:#888">${c.elecPlanLabel}</small></td>
                 <td>${c.gas.name}<br><small style="color:#888">${c.gas.plan}</small></td>
                 <td>${formatYen(c.elecCost)}円</td>
                 <td>${formatYen(c.gasCost)}円</td>
-                <td>${discountCell}</td>
                 <td><strong>${formatYen(c.total)}円</strong></td>
                 <td>${formatYen(c.total * 12)}円</td>
             </tr>
@@ -551,6 +564,7 @@ function renderSources() {
                         `).join('')}
                     </tbody>
                 </table>
+                ${p.note ? `<p class="source-note">${p.note}</p>` : ''}
                 <a href="${p.source}" target="_blank" rel="noopener noreferrer" class="source-link">
                     公式サイトで確認
                 </a>
@@ -574,24 +588,10 @@ function renderSources() {
                         `).join('')}
                     </tbody>
                 </table>
+                ${p.note ? `<p class="source-note">${p.note}</p>` : ''}
                 <a href="${p.source}" target="_blank" rel="noopener noreferrer" class="source-link">
                     公式サイトで確認
                 </a>
-            </div>
-        `;
-    }
-    html += '</div>';
-
-    html += '<h3>セット割引</h3><div class="source-grid">';
-    for (const d of SET_DISCOUNTS) {
-        const elec = ELECTRICITY_PROVIDERS.find(p => p.id === d.elecId);
-        const gas = GAS_PROVIDERS.find(p => p.id === d.gasId);
-        html += `
-            <div class="source-card">
-                <div class="source-header" style="border-left: 4px solid #FF6F00">
-                    <strong>${d.name}</strong>
-                </div>
-                <p class="source-detail">${elec.name} + ${gas.name} で ${d.description}</p>
             </div>
         `;
     }
