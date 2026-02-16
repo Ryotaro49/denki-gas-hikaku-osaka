@@ -1,230 +1,484 @@
 'use strict';
 
-// ===== 電力会社データ（関西エリア） =====
-// 料金は基準単位料金（税込）。燃料費調整額・再エネ賦課金は含まない。
-const ELECTRICITY_PROVIDERS = [
-    {
-        id: 'kepco',
-        name: '関西電力',
-        plan: '従量電灯A',
-        color: '#D32F2F',
-        source: 'https://kepco.jp/ryokin/unitprice/',
-        rates: [
-            { label: '最低料金（〜15kWh）', value: '522.58円' },
-            { label: '15〜120kWh', value: '20.21円/kWh' },
-            { label: '120〜300kWh', value: '25.61円/kWh' },
-            { label: '300kWh〜', value: '28.59円/kWh' }
-        ],
-        calculate(kwh) {
-            if (kwh <= 15) return 522.58;
-            let cost = 522.58;
-            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
-            cost += Math.min(Math.max(kwh - 120, 0), 180) * 25.61;
-            cost += Math.max(kwh - 300, 0) * 28.59;
-            return cost;
-        }
-    },
-    {
-        id: 'osakagas_elec',
-        name: '大阪ガスの電気',
-        plan: 'ベースプランA-G / A',
-        color: '#1565C0',
-        source: 'https://home.osakagas.co.jp/energy/electricity/price/plan_ag/',
-        note: 'A-Gプランは大阪ガスのガス契約が必要。他社ガスの場合はベースプランA（やや割高）が適用。',
-        rates: [
-            { label: '最低料金（〜15kWh）', value: '466.57円' },
-            { label: '15〜120kWh', value: '20.21円/kWh' },
-            { label: '120〜350kWh（A-G）', value: '24.80円/kWh' },
-            { label: '120〜350kWh（A）', value: '25.20円/kWh' },
-            { label: '350kWh〜（A-G）', value: '27.72円/kWh' },
-            { label: '350kWh〜（A）', value: '28.01円/kWh' }
-        ],
-        // gasId を受け取り、大阪ガスとのセットかどうかで料金を切り替え
-        calculate(kwh, gasId) {
-            const isGasSet = gasId === 'osakagas';
-            if (kwh <= 15) return 466.57;
-            let cost = 466.57;
-            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
-            if (isGasSet) {
-                cost += Math.min(Math.max(kwh - 120, 0), 230) * 24.80;
-                cost += Math.max(kwh - 350, 0) * 27.72;
-            } else {
-                cost += Math.min(Math.max(kwh - 120, 0), 230) * 25.20;
-                cost += Math.max(kwh - 350, 0) * 28.01;
+// ===== 地域別データ =====
+
+const REGIONS = {
+    osaka: {
+        name: '大阪',
+        electricityLabel: '電力会社（関西エリア）',
+        gasLabel: 'ガス会社（大阪ガスエリア）',
+        electricity: [
+            {
+                id: 'kepco',
+                name: '関西電力',
+                plan: '従量電灯A',
+                color: '#D32F2F',
+                source: 'https://kepco.jp/ryokin/unitprice/',
+                rates: [
+                    { label: '最低料金（〜15kWh）', value: '522.58円' },
+                    { label: '15〜120kWh', value: '20.21円/kWh' },
+                    { label: '120〜300kWh', value: '25.61円/kWh' },
+                    { label: '300kWh〜', value: '28.59円/kWh' }
+                ],
+                calculate(kwh) {
+                    if (kwh <= 15) return 522.58;
+                    let cost = 522.58;
+                    cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
+                    cost += Math.min(Math.max(kwh - 120, 0), 180) * 25.61;
+                    cost += Math.max(kwh - 300, 0) * 28.59;
+                    return cost;
+                }
+            },
+            {
+                id: 'osakagas_elec',
+                name: '大阪ガスの電気',
+                plan: 'ベースプランA-G / A',
+                color: '#1565C0',
+                source: 'https://home.osakagas.co.jp/energy/electricity/price/plan_ag/',
+                note: 'A-Gプランは大阪ガスのガス契約が必要。他社ガスの場合はベースプランA（やや割高）が適用。',
+                rates: [
+                    { label: '最低料金（〜15kWh）', value: '466.57円' },
+                    { label: '15〜120kWh', value: '20.21円/kWh' },
+                    { label: '120〜350kWh（A-G）', value: '24.80円/kWh' },
+                    { label: '120〜350kWh（A）', value: '25.20円/kWh' },
+                    { label: '350kWh〜（A-G）', value: '27.72円/kWh' },
+                    { label: '350kWh〜（A）', value: '28.01円/kWh' }
+                ],
+                calculate(kwh, gasId) {
+                    const isGasSet = gasId === 'osakagas';
+                    if (kwh <= 15) return 466.57;
+                    let cost = 466.57;
+                    cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
+                    if (isGasSet) {
+                        cost += Math.min(Math.max(kwh - 120, 0), 230) * 24.80;
+                        cost += Math.max(kwh - 350, 0) * 27.72;
+                    } else {
+                        cost += Math.min(Math.max(kwh - 120, 0), 230) * 25.20;
+                        cost += Math.max(kwh - 350, 0) * 28.01;
+                    }
+                    return cost;
+                }
+            },
+            {
+                id: 'octopus_elec',
+                name: 'オクトパスエナジー',
+                plan: 'グリーンオクトパス',
+                color: '#7B1FA2',
+                source: 'https://octopusenergy.co.jp/tariffs',
+                rates: [
+                    { label: '基本料金', value: '12.40円/日（約372円/月）' },
+                    { label: '0〜15kWh', value: '0.00円（無料）' },
+                    { label: '16〜120kWh', value: '20.21円/kWh' },
+                    { label: '121〜300kWh', value: '23.81円/kWh' },
+                    { label: '301kWh〜', value: '26.61円/kWh' }
+                ],
+                calculate(kwh) {
+                    const baseCost = 12.40 * 30;
+                    if (kwh <= 15) return baseCost;
+                    let cost = baseCost;
+                    cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
+                    cost += Math.min(Math.max(kwh - 120, 0), 180) * 23.81;
+                    cost += Math.max(kwh - 300, 0) * 26.61;
+                    return cost;
+                }
+            },
+            {
+                id: 'au_elec',
+                name: 'auでんき',
+                plan: 'でんきMプラン',
+                color: '#E65100',
+                source: 'https://www.au.com/energy/denki/merit/plan/',
+                note: '料金単価は関西電力と同等。Pontaポイント還元あり。',
+                rates: [
+                    { label: '最低料金（〜15kWh）', value: '522.57円' },
+                    { label: '15〜120kWh', value: '20.20円/kWh' },
+                    { label: '120〜300kWh', value: '25.60円/kWh' },
+                    { label: '300kWh〜', value: '28.58円/kWh' },
+                    { label: 'Pontaポイント還元', value: '0.5%（8,000円以上は1%）' }
+                ],
+                calculate(kwh) {
+                    if (kwh <= 15) return 522.57;
+                    let cost = 522.57;
+                    cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.20;
+                    cost += Math.min(Math.max(kwh - 120, 0), 180) * 25.60;
+                    cost += Math.max(kwh - 300, 0) * 28.58;
+                    if (cost >= 8000) return cost * 0.99;
+                    return cost * 0.995;
+                }
+            },
+            {
+                id: 'rakuten_elec',
+                name: '楽天でんき',
+                plan: 'プランS',
+                color: '#BF0000',
+                source: 'https://energy.rakuten.co.jp/electricity/fee/plan_s/',
+                note: '基本料金0円。楽天ポイント還元あり（200円につき1pt、楽天ガスセットで100円につき1pt）。',
+                rates: [
+                    { label: '基本料金', value: '0円' },
+                    { label: '従量料金（一律）', value: '22.50円/kWh' }
+                ],
+                calculate(kwh) {
+                    return kwh * 22.50;
+                }
             }
-            return cost;
-        }
-    },
-    {
-        id: 'octopus_elec',
-        name: 'オクトパスエナジー',
-        plan: 'グリーンオクトパス',
-        color: '#7B1FA2',
-        source: 'https://octopusenergy.co.jp/tariffs',
-        rates: [
-            { label: '基本料金', value: '12.40円/日（約372円/月）' },
-            { label: '0〜15kWh', value: '0.00円（無料）' },
-            { label: '16〜120kWh', value: '20.21円/kWh' },
-            { label: '121〜300kWh', value: '23.81円/kWh' },
-            { label: '301kWh〜', value: '26.61円/kWh' }
         ],
-        calculate(kwh) {
-            const baseCost = 12.40 * 30; // 基本料金（30日換算）
-            if (kwh <= 15) return baseCost; // 15kWhまで無料
-            let cost = baseCost;
-            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
-            cost += Math.min(Math.max(kwh - 120, 0), 180) * 23.81;
-            cost += Math.max(kwh - 300, 0) * 26.61;
-            return cost;
-        }
-    },
-    {
-        id: 'au_elec',
-        name: 'auでんき',
-        plan: 'でんきMプラン',
-        color: '#E65100',
-        source: 'https://www.au.com/energy/denki/merit/plan/',
-        note: '料金単価は関西電力と同等。Pontaポイント還元あり。',
-        rates: [
-            { label: '最低料金（〜15kWh）', value: '522.57円' },
-            { label: '15〜120kWh', value: '20.20円/kWh' },
-            { label: '120〜300kWh', value: '25.60円/kWh' },
-            { label: '300kWh〜', value: '28.58円/kWh' },
-            { label: 'Pontaポイント還元', value: '0.5%（8,000円以上は1%）' }
+        gas: [
+            {
+                id: 'osakagas',
+                name: '大阪ガス',
+                plan: '一般料金',
+                color: '#0277BD',
+                source: 'https://home.osakagas.co.jp/energy/gas/general_rate/',
+                rates: [
+                    { label: '0〜20m3', value: '基本759.00円 + 174.81円/m3' },
+                    { label: '20〜50m3', value: '基本1,364.81円 + 144.52円/m3' },
+                    { label: '50〜100m3', value: '基本1,635.74円 + 139.10円/m3' },
+                    { label: '100〜200m3', value: '基本2,074.72円 + 134.71円/m3' },
+                    { label: '200〜350m3', value: '基本3,506.75円 + 127.55円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 0) return 0;
+                    if (m3 <= 20) return 759.00 + m3 * 174.81;
+                    if (m3 <= 50) return 1364.81 + m3 * 144.52;
+                    if (m3 <= 100) return 1635.74 + m3 * 139.10;
+                    if (m3 <= 200) return 2074.72 + m3 * 134.71;
+                    if (m3 <= 350) return 3506.75 + m3 * 127.55;
+                    return 3834.72 + m3 * 126.62;
+                }
+            },
+            {
+                id: 'kepco_gas',
+                name: '関電ガス',
+                plan: 'なっトクプラン',
+                color: '#C62828',
+                source: 'https://kepco.jp/gas/menu_nattoku/',
+                note: '2025年12月改定料金。電気セット割引は廃止され料金に反映済み。',
+                rates: [
+                    { label: '0〜20m3', value: '基本735.13円 + 154.00円/m3' },
+                    { label: '20〜50m3', value: '基本1,223.46円 + 129.65円/m3' },
+                    { label: '50〜100m3', value: '基本1,227.82円 + 129.52円/m3' },
+                    { label: '100〜200m3', value: '基本1,631.90円 + 125.45円/m3' },
+                    { label: '200〜350m3', value: '基本2,951.03円 + 118.84円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 0) return 0;
+                    if (m3 <= 20) return 735.13 + m3 * 154.00;
+                    if (m3 <= 50) return 1223.46 + m3 * 129.65;
+                    if (m3 <= 100) return 1227.82 + m3 * 129.52;
+                    if (m3 <= 200) return 1631.90 + m3 * 125.45;
+                    if (m3 <= 350) return 2951.03 + m3 * 118.84;
+                    return 3251.86 + m3 * 117.96;
+                }
+            },
+            {
+                id: 'elpio_gas',
+                name: 'エルピオ都市ガス',
+                plan: 'スタンダードプラン',
+                color: '#6A1B9A',
+                source: 'https://www.lpio.jp/city_gas/city_plan/',
+                rates: [
+                    { label: '0〜20m3', value: '基本720.29円 + 165.89円/m3' },
+                    { label: '20〜50m3', value: '基本1,295.20円 + 137.15円/m3' },
+                    { label: '50〜100m3', value: '基本1,568.67円 + 133.40円/m3' },
+                    { label: '100〜200m3', value: '基本1,989.66円 + 129.19円/m3' },
+                    { label: '200〜350m3', value: '基本3,398.04円 + 123.60円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 0) return 0;
+                    if (m3 <= 20) return 720.29 + m3 * 165.89;
+                    if (m3 <= 50) return 1295.20 + m3 * 137.15;
+                    if (m3 <= 100) return 1568.67 + m3 * 133.40;
+                    if (m3 <= 200) return 1989.66 + m3 * 129.19;
+                    if (m3 <= 350) return 3398.04 + m3 * 123.60;
+                    return 3715.84 + m3 * 122.69;
+                }
+            },
+            {
+                id: 'gasone',
+                name: 'ガスワン（サイサン）',
+                plan: '都市ガスハッピープラン',
+                color: '#00838F',
+                source: 'https://www.gasone.net/toshi-gas/osakagas/',
+                note: '大阪ガス一般料金から一律4%割引。エネワンでんきとのセット割（月220円引き）あり。',
+                rates: [
+                    { label: '0〜20m3', value: '基本728.64円 + 167.81円/m3' },
+                    { label: '20〜50m3', value: '基本1,310.21円 + 138.73円/m3' },
+                    { label: '50〜100m3', value: '基本1,570.31円 + 133.53円/m3' },
+                    { label: '100〜200m3', value: '基本1,991.73円 + 129.32円/m3' },
+                    { label: '200〜350m3', value: '基本3,366.48円 + 122.44円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 0) return 0;
+                    if (m3 <= 20) return 728.64 + m3 * 167.81;
+                    if (m3 <= 50) return 1310.21 + m3 * 138.73;
+                    if (m3 <= 100) return 1570.31 + m3 * 133.53;
+                    if (m3 <= 200) return 1991.73 + m3 * 129.32;
+                    if (m3 <= 350) return 3366.48 + m3 * 122.44;
+                    return 3681.33 + m3 * 121.55;
+                }
+            }
         ],
-        calculate(kwh) {
-            if (kwh <= 15) return 522.57;
-            let cost = 522.57;
-            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.20;
-            cost += Math.min(Math.max(kwh - 120, 0), 180) * 25.60;
-            cost += Math.max(kwh - 300, 0) * 28.58;
-            // Pontaポイント還元（実質割引として概算）
-            if (cost >= 8000) return cost * 0.99;
-            return cost * 0.995;
-        }
+        notes: [
+            '料金は概算の参考値です。燃料費調整額・再エネ賦課金は含まれていません。',
+            '実際の料金は時期や使用状況により異なります。契約前に各社の公式サイトをご確認ください。',
+            'auでんきのPontaポイント還元は実質割引として概算計算しています。',
+            '楽天でんきのポイント還元は計算に含まれていません。楽天経済圏での実質還元を考慮するとさらにお得になります。',
+            'ガスワン（サイサン）のエネワンでんきセット割（月220円引き）は計算に含まれていません。',
+            'セット割引は代表的なものを掲載しています。他にも割引がある場合があります。'
+        ]
     },
-    {
-        id: 'rakuten_elec',
-        name: '楽天でんき',
-        plan: 'プランS',
-        color: '#BF0000',
-        source: 'https://energy.rakuten.co.jp/electricity/fee/plan_s/',
-        note: '基本料金0円。楽天ポイント還元あり（200円につき1pt、楽天ガスセットで100円につき1pt）。',
-        rates: [
-            { label: '基本料金', value: '0円' },
-            { label: '従量料金（一律）', value: '22.50円/kWh' }
+    tokyo: {
+        name: '東京',
+        electricityLabel: '電力会社（東京エリア）',
+        gasLabel: 'ガス会社（東京ガスエリア）',
+        electricity: [
+            {
+                id: 'tepco',
+                name: '東京電力EP',
+                plan: '従量電灯B（30A）',
+                color: '#F57C00',
+                source: 'https://www.tepco.co.jp/ep/private/plan/old01.html',
+                rates: [
+                    { label: '基本料金（30A）', value: '935.25円/月' },
+                    { label: '〜120kWh', value: '29.80円/kWh' },
+                    { label: '120〜300kWh', value: '36.40円/kWh' },
+                    { label: '300kWh〜', value: '40.49円/kWh' }
+                ],
+                calculate(kwh) {
+                    let cost = 935.25;
+                    cost += Math.min(kwh, 120) * 29.80;
+                    cost += Math.min(Math.max(kwh - 120, 0), 180) * 36.40;
+                    cost += Math.max(kwh - 300, 0) * 40.49;
+                    return cost;
+                }
+            },
+            {
+                id: 'tokyogas_elec',
+                name: '東京ガスの電気',
+                plan: '基本プラン（30A）',
+                color: '#1565C0',
+                source: 'https://home.tokyo-gas.co.jp/gas_power/plan/power/price.html',
+                note: '東京ガスのガス契約とのセット割（0.5%割引）あり。',
+                rates: [
+                    { label: '基本料金（30A）', value: '935.22円/月' },
+                    { label: '〜120kWh', value: '29.70円/kWh' },
+                    { label: '120〜300kWh', value: '35.69円/kWh' },
+                    { label: '300kWh〜', value: '39.50円/kWh' }
+                ],
+                calculate(kwh, gasId) {
+                    let cost = 935.22;
+                    cost += Math.min(kwh, 120) * 29.70;
+                    cost += Math.min(Math.max(kwh - 120, 0), 180) * 35.69;
+                    cost += Math.max(kwh - 300, 0) * 39.50;
+                    // 東京ガスとのセット割（0.5%割引）
+                    if (gasId === 'tokyogas') {
+                        cost *= 0.995;
+                    }
+                    return cost;
+                }
+            },
+            {
+                id: 'cdenergy_elec',
+                name: 'CDエナジーダイレクト',
+                plan: 'ベーシックでんきB（30A）',
+                color: '#00897B',
+                source: 'https://www.cdedirect.co.jp/plan/denki/basic_denki/',
+                note: 'ガスとのセット割（電気0.5%割引）あり。カテエネポイント還元あり。',
+                rates: [
+                    { label: '基本料金（30A）', value: '830.70円/月' },
+                    { label: '〜120kWh', value: '29.90円/kWh' },
+                    { label: '120〜300kWh', value: '35.59円/kWh' },
+                    { label: '300kWh〜', value: '36.50円/kWh' }
+                ],
+                calculate(kwh, gasId) {
+                    let cost = 830.70;
+                    cost += Math.min(kwh, 120) * 29.90;
+                    cost += Math.min(Math.max(kwh - 120, 0), 180) * 35.59;
+                    cost += Math.max(kwh - 300, 0) * 36.50;
+                    // ガスセット割（0.5%割引）
+                    if (gasId === 'cdenergy_gas') {
+                        cost *= 0.995;
+                    }
+                    return cost;
+                }
+            },
+            {
+                id: 'octopus_elec_tokyo',
+                name: 'オクトパスエナジー',
+                plan: 'グリーンオクトパス',
+                color: '#7B1FA2',
+                source: 'https://octopusenergy.co.jp/tariffs',
+                note: '基本料金は日額制。燃料費調整額の上限なし。',
+                rates: [
+                    { label: '基本料金', value: '29.10円/日（約873円/月）' },
+                    { label: '〜120kWh', value: '18.98円/kWh' },
+                    { label: '120〜300kWh', value: '24.10円/kWh' },
+                    { label: '300kWh〜', value: '27.44円/kWh' }
+                ],
+                calculate(kwh) {
+                    let cost = 29.10 * 30; // 基本料金（30日換算）
+                    cost += Math.min(kwh, 120) * 18.98;
+                    cost += Math.min(Math.max(kwh - 120, 0), 180) * 24.10;
+                    cost += Math.max(kwh - 300, 0) * 27.44;
+                    return cost;
+                }
+            },
+            {
+                id: 'rakuten_elec_tokyo',
+                name: '楽天でんき',
+                plan: 'プランS',
+                color: '#BF0000',
+                source: 'https://energy.rakuten.co.jp/electricity/fee/plan_s/',
+                note: '基本料金0円。楽天ポイント還元あり。市場価格調整額は別途変動。',
+                rates: [
+                    { label: '基本料金', value: '0円' },
+                    { label: '従量料金（一律）', value: '36.85円/kWh' }
+                ],
+                calculate(kwh) {
+                    return kwh * 36.85;
+                }
+            }
         ],
-        calculate(kwh) {
-            return kwh * 22.50;
-        }
+        gas: [
+            {
+                id: 'tokyogas',
+                name: '東京ガス',
+                plan: '一般料金',
+                color: '#0277BD',
+                source: 'https://home.tokyo-gas.co.jp/gas_power/plan/gas/basic.html',
+                rates: [
+                    { label: '0〜20m3', value: '基本759.00円 + 145.31円/m3' },
+                    { label: '20〜80m3', value: '基本1,056.00円 + 130.46円/m3' },
+                    { label: '80〜200m3', value: '基本1,232.00円 + 128.26円/m3' },
+                    { label: '200〜500m3', value: '基本1,892.00円 + 124.96円/m3' },
+                    { label: '500〜800m3', value: '基本6,292.00円 + 116.16円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 0) return 0;
+                    if (m3 <= 20) return 759.00 + m3 * 145.31;
+                    if (m3 <= 80) return 1056.00 + m3 * 130.46;
+                    if (m3 <= 200) return 1232.00 + m3 * 128.26;
+                    if (m3 <= 500) return 1892.00 + m3 * 124.96;
+                    if (m3 <= 800) return 6292.00 + m3 * 116.16;
+                    return 12452.00 + m3 * 108.46;
+                }
+            },
+            {
+                id: 'lemongas',
+                name: 'レモンガス',
+                plan: 'わくわくプラン',
+                color: '#F9A825',
+                source: 'https://www.lemongas.co.jp/citygas/wakuwaku/',
+                note: '東京ガスの基準単位料金より約5%割安。',
+                rates: [
+                    { label: '0〜20m3', value: '基本759.00円 + 138.04円/m3' },
+                    { label: '20〜80m3', value: '基本1,041.13円 + 123.94円/m3' },
+                    { label: '80〜200m3', value: '基本1,208.99円 + 121.84円/m3' },
+                    { label: '200〜500m3', value: '基本1,834.35円 + 118.71円/m3' },
+                    { label: '500〜800m3', value: '基本6,015.37円 + 110.35円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 0) return 0;
+                    if (m3 <= 20) return 759.00 + m3 * 138.04;
+                    if (m3 <= 80) return 1041.13 + m3 * 123.94;
+                    if (m3 <= 200) return 1208.99 + m3 * 121.84;
+                    if (m3 <= 500) return 1834.35 + m3 * 118.71;
+                    if (m3 <= 800) return 6015.37 + m3 * 110.35;
+                    return 11865.73 + m3 * 103.04;
+                }
+            },
+            {
+                id: 'elpio_gas_tokyo',
+                name: 'エルピオ都市ガス',
+                plan: 'スタンダードプラン',
+                color: '#6A1B9A',
+                source: 'https://www.lpio.jp/city_gas/city_plan/',
+                note: '20m3以下は基本料金が高いが、単位料金が大幅に安い。',
+                rates: [
+                    { label: '0〜20m3', value: '基本975.00円 + 125.11円/m3' },
+                    { label: '20〜80m3', value: '基本1,015.00円 + 124.00円/m3' },
+                    { label: '80〜200m3', value: '基本1,232.00円 + 123.00円/m3' },
+                    { label: '200〜500m3', value: '基本1,833.35円 + 119.84円/m3' },
+                    { label: '500〜800m3', value: '基本6,034.03円 + 110.24円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 0) return 0;
+                    if (m3 <= 20) return 975.00 + m3 * 125.11;
+                    if (m3 <= 80) return 1015.00 + m3 * 124.00;
+                    if (m3 <= 200) return 1232.00 + m3 * 123.00;
+                    if (m3 <= 500) return 1833.35 + m3 * 119.84;
+                    if (m3 <= 800) return 6034.03 + m3 * 110.24;
+                    return 11941.00 + m3 * 105.10;
+                }
+            },
+            {
+                id: 'nichigas',
+                name: 'ニチガス',
+                plan: 'プレミアム+プラン',
+                color: '#D84315',
+                source: 'https://www.nichigas.co.jp/en/for-home/citygas',
+                note: '0〜5m3は定額1,485円。従量料金は東京ガスより約5%割安。',
+                rates: [
+                    { label: '0〜5m3', value: '定額 1,485.00円' },
+                    { label: '5〜20m3', value: '基本795.30円 + 138.05円/m3' },
+                    { label: '20〜80m3', value: '基本1,077.57円 + 123.93円/m3' },
+                    { label: '80〜200m3', value: '基本1,244.77円 + 121.83円/m3' },
+                    { label: '200〜500m3', value: '基本1,871.77円 + 118.71円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 0) return 0;
+                    if (m3 <= 5) return 1485.00;
+                    if (m3 <= 20) return 795.30 + m3 * 138.05;
+                    if (m3 <= 80) return 1077.57 + m3 * 123.93;
+                    if (m3 <= 200) return 1244.77 + m3 * 121.83;
+                    if (m3 <= 500) return 1871.77 + m3 * 118.71;
+                    if (m3 <= 800) return 6051.77 + m3 * 110.35;
+                    return 11903.77 + m3 * 103.03;
+                }
+            },
+            {
+                id: 'cdenergy_gas',
+                name: 'CDエナジーダイレクト',
+                plan: 'ベーシックガス',
+                color: '#00838F',
+                source: 'https://www.cdedirect.co.jp/plan/gas/basic_gas/',
+                note: '電気とのセット割（ガス0.5%割引）あり。',
+                rates: [
+                    { label: '0〜20m3', value: '基本735.46円 + 140.76円/m3' },
+                    { label: '20〜80m3', value: '基本1,022.38円 + 126.42円/m3' },
+                    { label: '80〜200m3', value: '基本1,193.39円 + 124.28円/m3' },
+                    { label: '200〜500m3', value: '基本1,833.02円 + 121.08円/m3' },
+                    { label: '500〜800m3', value: '基本6,100.61円 + 112.54円/m3' }
+                ],
+                calculate(m3, elecId) {
+                    if (m3 <= 0) return 0;
+                    let cost;
+                    if (m3 <= 20) cost = 735.46 + m3 * 140.76;
+                    else if (m3 <= 80) cost = 1022.38 + m3 * 126.42;
+                    else if (m3 <= 200) cost = 1193.39 + m3 * 124.28;
+                    else if (m3 <= 500) cost = 1833.02 + m3 * 121.08;
+                    else if (m3 <= 800) cost = 6100.61 + m3 * 112.54;
+                    else cost = 12065.05 + m3 * 105.09;
+                    // 電気セット割（0.5%割引）
+                    if (elecId === 'cdenergy_elec') {
+                        cost *= 0.995;
+                    }
+                    return cost;
+                }
+            }
+        ],
+        notes: [
+            '料金は概算の参考値です。燃料費調整額・再エネ賦課金は含まれていません。',
+            '実際の料金は時期や使用状況により異なります。契約前に各社の公式サイトをご確認ください。',
+            '電気料金は30A契約を想定しています。アンペア数により基本料金が変わります。',
+            '東京ガスの電気のセット割（0.5%割引）は東京ガスのガス契約時に自動適用されます。',
+            'CDエナジーダイレクトの電気・ガスセット割（各0.5%割引）は計算に含まれています。',
+            'オクトパスエナジーは燃料費調整額の上限がありません。市場価格により変動幅が大きい場合があります。',
+            '楽天でんきは市場価格調整額が別途変動します。ポイント還元は計算に含まれていません。',
+            'ニチガスは0〜5m3が定額制のため、少量使用では割高になる場合があります。'
+        ]
     }
-];
-
-// ===== ガス会社データ（大阪ガスエリア） =====
-// 料金体系: 基本料金 + 使用量 × 基準単位料金（使用量に応じた段階制）
-// 原料費調整額は含まない。
-const GAS_PROVIDERS = [
-    {
-        id: 'osakagas',
-        name: '大阪ガス',
-        plan: '一般料金',
-        color: '#0277BD',
-        source: 'https://home.osakagas.co.jp/energy/gas/general_rate/',
-        rates: [
-            { label: '0〜20m3', value: '基本759.00円 + 174.81円/m3' },
-            { label: '20〜50m3', value: '基本1,364.81円 + 144.52円/m3' },
-            { label: '50〜100m3', value: '基本1,635.74円 + 139.10円/m3' },
-            { label: '100〜200m3', value: '基本2,074.72円 + 134.71円/m3' },
-            { label: '200〜350m3', value: '基本3,506.75円 + 127.55円/m3' }
-        ],
-        calculate(m3) {
-            if (m3 <= 0) return 0;
-            if (m3 <= 20) return 759.00 + m3 * 174.81;
-            if (m3 <= 50) return 1364.81 + m3 * 144.52;
-            if (m3 <= 100) return 1635.74 + m3 * 139.10;
-            if (m3 <= 200) return 2074.72 + m3 * 134.71;
-            if (m3 <= 350) return 3506.75 + m3 * 127.55;
-            return 3834.72 + m3 * 126.62;
-        }
-    },
-    {
-        id: 'kepco_gas',
-        name: '関電ガス',
-        plan: 'なっトクプラン',
-        color: '#C62828',
-        source: 'https://kepco.jp/gas/menu_nattoku/',
-        note: '2025年12月改定料金。電気セット割引は廃止され料金に反映済み。',
-        rates: [
-            { label: '0〜20m3', value: '基本735.13円 + 154.00円/m3' },
-            { label: '20〜50m3', value: '基本1,223.46円 + 129.65円/m3' },
-            { label: '50〜100m3', value: '基本1,227.82円 + 129.52円/m3' },
-            { label: '100〜200m3', value: '基本1,631.90円 + 125.45円/m3' },
-            { label: '200〜350m3', value: '基本2,951.03円 + 118.84円/m3' }
-        ],
-        calculate(m3) {
-            if (m3 <= 0) return 0;
-            if (m3 <= 20) return 735.13 + m3 * 154.00;
-            if (m3 <= 50) return 1223.46 + m3 * 129.65;
-            if (m3 <= 100) return 1227.82 + m3 * 129.52;
-            if (m3 <= 200) return 1631.90 + m3 * 125.45;
-            if (m3 <= 350) return 2951.03 + m3 * 118.84;
-            return 3251.86 + m3 * 117.96;
-        }
-    },
-    {
-        id: 'elpio_gas',
-        name: 'エルピオ都市ガス',
-        plan: 'スタンダードプラン',
-        color: '#6A1B9A',
-        source: 'https://www.lpio.jp/city_gas/city_plan/',
-        rates: [
-            { label: '0〜20m3', value: '基本720.29円 + 165.89円/m3' },
-            { label: '20〜50m3', value: '基本1,295.20円 + 137.15円/m3' },
-            { label: '50〜100m3', value: '基本1,568.67円 + 133.40円/m3' },
-            { label: '100〜200m3', value: '基本1,989.66円 + 129.19円/m3' },
-            { label: '200〜350m3', value: '基本3,398.04円 + 123.60円/m3' }
-        ],
-        calculate(m3) {
-            if (m3 <= 0) return 0;
-            if (m3 <= 20) return 720.29 + m3 * 165.89;
-            if (m3 <= 50) return 1295.20 + m3 * 137.15;
-            if (m3 <= 100) return 1568.67 + m3 * 133.40;
-            if (m3 <= 200) return 1989.66 + m3 * 129.19;
-            if (m3 <= 350) return 3398.04 + m3 * 123.60;
-            return 3715.84 + m3 * 122.69;
-        }
-    },
-    {
-        id: 'gasone',
-        name: 'ガスワン（サイサン）',
-        plan: '都市ガスハッピープラン',
-        color: '#00838F',
-        source: 'https://www.gasone.net/toshi-gas/osakagas/',
-        note: '大阪ガス一般料金から一律4%割引。エネワンでんきとのセット割（月220円引き）あり。',
-        rates: [
-            { label: '0〜20m3', value: '基本728.64円 + 167.81円/m3' },
-            { label: '20〜50m3', value: '基本1,310.21円 + 138.73円/m3' },
-            { label: '50〜100m3', value: '基本1,570.31円 + 133.53円/m3' },
-            { label: '100〜200m3', value: '基本1,991.73円 + 129.32円/m3' },
-            { label: '200〜350m3', value: '基本3,366.48円 + 122.44円/m3' }
-        ],
-        calculate(m3) {
-            if (m3 <= 0) return 0;
-            if (m3 <= 20) return 728.64 + m3 * 167.81;
-            if (m3 <= 50) return 1310.21 + m3 * 138.73;
-            if (m3 <= 100) return 1570.31 + m3 * 133.53;
-            if (m3 <= 200) return 1991.73 + m3 * 129.32;
-            if (m3 <= 350) return 3366.48 + m3 * 122.44;
-            return 3681.33 + m3 * 121.55;
-        }
-    }
-];
-
-// ===== セット割引 =====
-// 2025年12月以降:
-// - 関電ガス なっトクパックの電気セット割引は廃止（料金に反映済み）
-// - 大阪ガスの電気 A-G は大阪ガスのガス契約時の料金（calculate内で処理）
-const SET_DISCOUNTS = [];
+};
 
 // ===== 世帯人数プリセット =====
 const HOUSEHOLD_PRESETS = {
@@ -234,6 +488,9 @@ const HOUSEHOLD_PRESETS = {
     4: { kwh: 370, m3: 39, label: '4人以上平均' }
 };
 
+// ===== 現在の地域 =====
+let currentRegion = 'osaka';
+
 // ===== DOM要素 =====
 const kwhSlider = document.getElementById('kwh-slider');
 const kwhInput = document.getElementById('kwh-input');
@@ -241,6 +498,7 @@ const m3Slider = document.getElementById('m3-slider');
 const m3Input = document.getElementById('m3-input');
 const bestCard = document.getElementById('best-card');
 const tableBody = document.querySelector('#results-table tbody');
+const pageTitle = document.getElementById('page-title');
 
 // ===== チャートインスタンス =====
 let combinationChart = null;
@@ -253,27 +511,37 @@ function formatYen(num) {
     return Math.round(num).toLocaleString('ja-JP');
 }
 
+function getProviders() {
+    return REGIONS[currentRegion];
+}
+
 // ===== 全組み合わせを計算 =====
 function calculateCombinations(kwh, m3) {
+    const region = getProviders();
     const results = [];
 
-    for (const elec of ELECTRICITY_PROVIDERS) {
-        for (const gas of GAS_PROVIDERS) {
-            // 大阪ガスの電気は gasId を渡して A-G / A を切り替え
+    for (const elec of region.electricity) {
+        for (const gas of region.gas) {
             const elecCost = elec.calculate(kwh, gas.id);
-            const gasCost = gas.calculate(m3);
+            const gasCost = gas.calculate ? (gas.calculate.length > 1 ? gas.calculate(m3, elec.id) : gas.calculate(m3)) : 0;
 
-            // 大阪ガスの電気 + 大阪ガスの場合のプラン表示
             let elecPlanLabel = elec.plan;
             let comboNote = '';
+
+            // 大阪ガスの電気 + 大阪ガスの場合のプラン表示
             if (elec.id === 'osakagas_elec') {
-                if (gas.id === 'osakagas') {
-                    elecPlanLabel = 'ベースプランA-G';
-                } else {
-                    elecPlanLabel = 'ベースプランA';
-                }
+                elecPlanLabel = gas.id === 'osakagas' ? 'ベースプランA-G' : 'ベースプランA';
             }
-            if (elec.note) {
+            // 東京ガスの電気セット割表示
+            if (elec.id === 'tokyogas_elec' && gas.id === 'tokyogas') {
+                comboNote = '東京ガスセット割（0.5%割引）適用';
+            }
+            // CDエナジーセット割表示
+            if (elec.id === 'cdenergy_elec' && gas.id === 'cdenergy_gas') {
+                comboNote = 'CDエナジー電気・ガスセット割（各0.5%割引）適用';
+            }
+
+            if (!comboNote && elec.note) {
                 comboNote = elec.note;
             }
 
@@ -404,8 +672,8 @@ function renderCombinationChart(combinations) {
 // ===== 電気料金チャート =====
 function renderElectricityChart(kwh) {
     const ctx = document.getElementById('electricity-chart').getContext('2d');
-    // 電気単体比較では gasId なし（大阪ガスの電気はベースプランAで計算）
-    const data = ELECTRICITY_PROVIDERS.map(p => ({
+    const region = getProviders();
+    const data = region.electricity.map(p => ({
         name: p.name,
         cost: Math.round(p.calculate(kwh, null)),
         color: p.color
@@ -450,7 +718,8 @@ function renderElectricityChart(kwh) {
 // ===== ガス料金チャート =====
 function renderGasChart(m3) {
     const ctx = document.getElementById('gas-chart').getContext('2d');
-    const data = GAS_PROVIDERS.map(p => ({
+    const region = getProviders();
+    const data = region.gas.map(p => ({
         name: p.name,
         cost: Math.round(p.calculate(m3)),
         color: p.color
@@ -564,10 +833,11 @@ function renderSources() {
     const container = document.getElementById('sources-container');
     if (!container) return;
 
+    const region = getProviders();
     let html = '';
 
-    html += '<h3>電力会社</h3><div class="source-grid">';
-    for (const p of ELECTRICITY_PROVIDERS) {
+    html += `<h3>${region.electricityLabel}</h3><div class="source-grid">`;
+    for (const p of region.electricity) {
         html += `
             <div class="source-card">
                 <div class="source-header" style="border-left: 4px solid ${p.color}">
@@ -590,8 +860,8 @@ function renderSources() {
     }
     html += '</div>';
 
-    html += '<h3>ガス会社</h3><div class="source-grid">';
-    for (const p of GAS_PROVIDERS) {
+    html += `<h3>${region.gasLabel}</h3><div class="source-grid">`;
+    for (const p of region.gas) {
         html += `
             <div class="source-card">
                 <div class="source-header" style="border-left: 4px solid ${p.color}">
@@ -617,6 +887,14 @@ function renderSources() {
     container.innerHTML = html;
 }
 
+// ===== 注意事項描画 =====
+function renderNotes() {
+    const region = getProviders();
+    const notesList = document.querySelector('.notes-section ul');
+    if (!notesList) return;
+    notesList.innerHTML = region.notes.map(n => `<li>${n}</li>`).join('');
+}
+
 // ===== メイン計算・描画 =====
 function calculate() {
     const kwh = parseInt(kwhInput.value) || 0;
@@ -630,6 +908,22 @@ function calculate() {
     renderGasChart(m3);
     renderAnnualChart(combinations);
     renderTable(combinations);
+}
+
+// ===== 地域切り替え =====
+function switchRegion(region) {
+    currentRegion = region;
+    const regionData = getProviders();
+    pageTitle.textContent = `${regionData.name} 電気・ガス 最安比較`;
+
+    // チャート高さを組み合わせ数に応じて調整
+    const combCount = regionData.electricity.length * regionData.gas.length;
+    const chartEl = document.querySelector('.chart-combination');
+    chartEl.style.minHeight = `${Math.max(400, combCount * 28 + 80)}px`;
+
+    renderSources();
+    renderNotes();
+    calculate();
 }
 
 // ===== イベントリスナー =====
@@ -667,6 +961,14 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
     });
 });
 
+// 地域選択
+document.querySelectorAll('.region-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.region-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        switchRegion(btn.dataset.region);
+    });
+});
+
 // ===== 初期描画 =====
-renderSources();
-calculate();
+switchRegion('osaka');
