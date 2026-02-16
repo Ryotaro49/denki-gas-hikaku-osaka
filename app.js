@@ -64,16 +64,16 @@ const ELECTRICITY_PROVIDERS = [
         rates: [
             { label: '基本料金', value: '12.40円/日（約372円/月）' },
             { label: '0〜15kWh', value: '0.00円（無料）' },
-            { label: '16〜120kWh', value: '20.08円/kWh' },
-            { label: '121〜300kWh', value: '22.70円/kWh' },
+            { label: '16〜120kWh', value: '20.21円/kWh' },
+            { label: '121〜300kWh', value: '23.81円/kWh' },
             { label: '301kWh〜', value: '26.61円/kWh' }
         ],
         calculate(kwh) {
             const baseCost = 12.40 * 30; // 基本料金（30日換算）
             if (kwh <= 15) return baseCost; // 15kWhまで無料
             let cost = baseCost;
-            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.08;
-            cost += Math.min(Math.max(kwh - 120, 0), 180) * 22.70;
+            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
+            cost += Math.min(Math.max(kwh - 120, 0), 180) * 23.81;
             cost += Math.max(kwh - 300, 0) * 26.61;
             return cost;
         }
@@ -86,43 +86,36 @@ const ELECTRICITY_PROVIDERS = [
         source: 'https://www.au.com/energy/denki/merit/plan/',
         note: '料金単価は関西電力と同等。Pontaポイント還元あり。',
         rates: [
-            { label: '最低料金（〜15kWh）', value: '522.58円' },
-            { label: '15〜120kWh', value: '20.21円/kWh' },
-            { label: '120〜300kWh', value: '25.61円/kWh' },
-            { label: '300kWh〜', value: '28.59円/kWh' },
+            { label: '最低料金（〜15kWh）', value: '522.57円' },
+            { label: '15〜120kWh', value: '20.20円/kWh' },
+            { label: '120〜300kWh', value: '25.60円/kWh' },
+            { label: '300kWh〜', value: '28.58円/kWh' },
             { label: 'Pontaポイント還元', value: '0.5%（8,000円以上は1%）' }
         ],
         calculate(kwh) {
-            if (kwh <= 15) return 522.58;
-            let cost = 522.58;
-            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.21;
-            cost += Math.min(Math.max(kwh - 120, 0), 180) * 25.61;
-            cost += Math.max(kwh - 300, 0) * 28.59;
+            if (kwh <= 15) return 522.57;
+            let cost = 522.57;
+            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.20;
+            cost += Math.min(Math.max(kwh - 120, 0), 180) * 25.60;
+            cost += Math.max(kwh - 300, 0) * 28.58;
             // Pontaポイント還元（実質割引として概算）
             if (cost >= 8000) return cost * 0.99;
             return cost * 0.995;
         }
     },
     {
-        id: 'eo_elec',
-        name: 'eo電気',
-        plan: 'スタンダードプランK',
-        color: '#2E7D32',
-        source: 'https://eonet.jp/service/denki/charge/',
-        note: '2026年1月12日で新規受付終了',
+        id: 'rakuten_elec',
+        name: '楽天でんき',
+        plan: 'プランS',
+        color: '#BF0000',
+        source: 'https://energy.rakuten.co.jp/electricity/fee/plan_s/',
+        note: '基本料金0円。楽天ポイント還元あり（200円につき1pt、楽天ガスセットで100円につき1pt）。',
         rates: [
-            { label: '最低料金（〜15kWh）', value: '518.25円' },
-            { label: '15〜120kWh', value: '20.01円/kWh' },
-            { label: '120〜300kWh', value: '25.35円/kWh' },
-            { label: '300kWh〜', value: '28.30円/kWh' }
+            { label: '基本料金', value: '0円' },
+            { label: '従量料金（一律）', value: '22.50円/kWh' }
         ],
         calculate(kwh) {
-            if (kwh <= 15) return 518.25;
-            let cost = 518.25;
-            cost += Math.min(Math.max(kwh - 15, 0), 105) * 20.01;
-            cost += Math.min(Math.max(kwh - 120, 0), 180) * 25.35;
-            cost += Math.max(kwh - 300, 0) * 28.30;
-            return cost;
+            return kwh * 22.50;
         }
     }
 ];
@@ -199,6 +192,30 @@ const GAS_PROVIDERS = [
             if (m3 <= 200) return 1989.66 + m3 * 129.19;
             if (m3 <= 350) return 3398.04 + m3 * 123.60;
             return 3715.84 + m3 * 122.69;
+        }
+    },
+    {
+        id: 'gasone',
+        name: 'ガスワン（サイサン）',
+        plan: '都市ガスハッピープラン',
+        color: '#00838F',
+        source: 'https://www.gasone.net/toshi-gas/osakagas/',
+        note: '大阪ガス一般料金から一律4%割引。エネワンでんきとのセット割（月220円引き）あり。',
+        rates: [
+            { label: '0〜20m3', value: '基本728.64円 + 167.81円/m3' },
+            { label: '20〜50m3', value: '基本1,310.21円 + 138.73円/m3' },
+            { label: '50〜100m3', value: '基本1,570.31円 + 133.53円/m3' },
+            { label: '100〜200m3', value: '基本1,991.73円 + 129.32円/m3' },
+            { label: '200〜350m3', value: '基本3,366.48円 + 122.44円/m3' }
+        ],
+        calculate(m3) {
+            if (m3 <= 0) return 0;
+            if (m3 <= 20) return 728.64 + m3 * 167.81;
+            if (m3 <= 50) return 1310.21 + m3 * 138.73;
+            if (m3 <= 100) return 1570.31 + m3 * 133.53;
+            if (m3 <= 200) return 1991.73 + m3 * 129.32;
+            if (m3 <= 350) return 3366.48 + m3 * 122.44;
+            return 3681.33 + m3 * 121.55;
         }
     }
 ];
