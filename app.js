@@ -477,6 +477,194 @@ const REGIONS = {
             '楽天でんきは市場価格調整額が別途変動します。ポイント還元は計算に含まれていません。',
             'ニチガスは0〜5m3が定額制のため、少量使用では割高になる場合があります。'
         ]
+    },
+
+    fukuoka: {
+        name: '福岡',
+        electricityLabel: '電力会社（九州エリア）',
+        gasLabel: 'ガス会社（西部ガスエリア）',
+        electricity: [
+            {
+                id: 'kyuden',
+                name: '九州電力',
+                plan: '従量電灯B（30A）',
+                color: '#D32F2F',
+                source: 'https://customer.kyuden.co.jp/ja/electricity/home-plan.html',
+                rates: [
+                    { label: '基本料金（30A）', value: '948.72円' },
+                    { label: '〜120kWh', value: '18.37円/kWh' },
+                    { label: '120〜300kWh', value: '23.97円/kWh' },
+                    { label: '300kWh〜', value: '26.97円/kWh' }
+                ],
+                calculate(kwh) {
+                    let cost = 948.72;
+                    cost += Math.min(kwh, 120) * 18.37;
+                    cost += Math.min(Math.max(kwh - 120, 0), 180) * 23.97;
+                    cost += Math.max(kwh - 300, 0) * 26.97;
+                    return cost;
+                }
+            },
+            {
+                id: 'saibugas_elec',
+                name: '西部ガスの電気',
+                plan: 'プラスでんきプラン1（30A）',
+                color: '#1565C0',
+                source: 'https://www.saibugas.co.jp/home/electric_power/plan/index.htm',
+                rates: [
+                    { label: '基本料金（30A）', value: '855.00円' },
+                    { label: '〜120kWh', value: '18.37円/kWh' },
+                    { label: '120〜300kWh', value: '23.97円/kWh' },
+                    { label: '300kWh〜', value: '25.87円/kWh' }
+                ],
+                calculate(kwh) {
+                    let cost = 855.00;
+                    cost += Math.min(kwh, 120) * 18.37;
+                    cost += Math.min(Math.max(kwh - 120, 0), 180) * 23.97;
+                    cost += Math.max(kwh - 300, 0) * 25.87;
+                    return cost;
+                }
+            },
+            {
+                id: 'idex',
+                name: 'イデックスでんき',
+                plan: 'ファミリープラン（30A）※新規受付終了',
+                color: '#00897B',
+                source: 'https://idexdenki.idex.co.jp/',
+                note: '※ 新規受付は終了しています（参考掲載）',
+                rates: [
+                    { label: '基本料金（30A）', value: '939.23円' },
+                    { label: '〜120kWh', value: '18.10円/kWh' },
+                    { label: '120〜300kWh', value: '22.88円/kWh' },
+                    { label: '300kWh〜', value: '24.14円/kWh' }
+                ],
+                calculate(kwh) {
+                    let cost = 939.23;
+                    cost += Math.min(kwh, 120) * 18.10;
+                    cost += Math.min(Math.max(kwh - 120, 0), 180) * 22.88;
+                    cost += Math.max(kwh - 300, 0) * 24.14;
+                    return cost;
+                }
+            },
+            {
+                id: 'octopus_elec',
+                name: 'オクトパスエナジー',
+                plan: 'シンプルオクトパス（30A）',
+                color: '#7B1FA2',
+                source: 'https://octopusenergy.co.jp/',
+                rates: [
+                    { label: '基本料金（30A相当）', value: '31.14円/日 × 30日 = 934.20円' },
+                    { label: '〜120kWh', value: '17.52円/kWh' },
+                    { label: '120〜300kWh', value: '21.80円/kWh' },
+                    { label: '300kWh〜', value: '24.80円/kWh' }
+                ],
+                calculate(kwh) {
+                    let cost = 31.14 * 30;
+                    cost += Math.min(kwh, 120) * 17.52;
+                    cost += Math.min(Math.max(kwh - 120, 0), 180) * 21.80;
+                    cost += Math.max(kwh - 300, 0) * 24.80;
+                    return cost;
+                }
+            },
+            {
+                id: 'rakuten_elec',
+                name: '楽天でんき',
+                plan: 'プランS',
+                color: '#C62828',
+                source: 'https://energy.rakuten.co.jp/electricity/fee/',
+                rates: [
+                    { label: '基本料金', value: '0円' },
+                    { label: '一律従量', value: '38.15円/kWh' }
+                ],
+                calculate(kwh) {
+                    return kwh * 38.15;
+                }
+            }
+        ],
+        gas: [
+            {
+                id: 'saibugas',
+                name: '西部ガス',
+                plan: '一般料金',
+                color: '#1565C0',
+                source: 'https://www.saibugas.co.jp/home/rates/menu/index.htm',
+                rates: [
+                    { label: '0〜15m3', value: '基本913.00円 + 246.76円/m3' },
+                    { label: '15〜30m3', value: '基本1,133.00円 + 232.10円/m3' },
+                    { label: '30〜100m3', value: '基本1,562.00円 + 217.80円/m3' },
+                    { label: '100m3〜', value: '基本2,167.00円 + 211.75円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 15) return 913.00 + m3 * 246.76;
+                    if (m3 <= 30) return 1133.00 + m3 * 232.10;
+                    if (m3 <= 100) return 1562.00 + m3 * 217.80;
+                    return 2167.00 + m3 * 211.75;
+                }
+            },
+            {
+                id: 'saibugas_hinata',
+                name: '西部ガス ヒナタメリット',
+                plan: 'ヒナタメリット',
+                color: '#FF8F00',
+                source: 'https://www.saibugas.co.jp/home/hinata_merit/making/',
+                rates: [
+                    { label: '0〜15m3', value: '基本968.00円 + 243.10円/m3' },
+                    { label: '15〜20m3', value: '基本1,133.00円 + 232.10円/m3' },
+                    { label: '20m3〜', value: '基本1,518.00円 + 212.85円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 15) return 968.00 + m3 * 243.10;
+                    if (m3 <= 20) return 1133.00 + m3 * 232.10;
+                    return 1518.00 + m3 * 212.85;
+                }
+            },
+            {
+                id: 'elpio_gas',
+                name: 'エルピオ都市ガス',
+                plan: '九州エリア',
+                color: '#2E7D32',
+                source: 'https://www.lpio.jp/city_gas/%E8%A5%BF%E9%83%A8%E3%82%AC%E3%82%B9%E3%82%A8%E3%83%AA%E3%82%A2/',
+                rates: [
+                    { label: '0〜15m3', value: '基本884.70円 + 239.11円/m3' },
+                    { label: '15〜30m3', value: '基本1,097.88円 + 224.90円/m3' },
+                    { label: '30〜100m3', value: '基本1,513.58円 + 210.98円/m3' },
+                    { label: '100m3〜', value: '基本2,099.82円 + 205.19円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 15) return 884.70 + m3 * 239.11;
+                    if (m3 <= 30) return 1097.88 + m3 * 224.90;
+                    if (m3 <= 100) return 1513.58 + m3 * 210.98;
+                    return 2099.82 + m3 * 205.19;
+                }
+            },
+            {
+                id: 'tepco_gas',
+                name: '東京電力EP',
+                plan: 'とくとくガスプラン（九州）',
+                color: '#F57C00',
+                source: 'https://www.tepco.co.jp/ep/gas-jiyuuka/plan/kyushu/saibu/index-j.html',
+                rates: [
+                    { label: '0〜15m3', value: '基本885.61円 + 239.35円/m3' },
+                    { label: '15〜30m3', value: '基本1,099.01円 + 225.13円/m3' },
+                    { label: '30〜100m3', value: '基本1,515.14円 + 211.26円/m3' },
+                    { label: '100m3〜', value: '基本2,101.99円 + 205.39円/m3' }
+                ],
+                calculate(m3) {
+                    if (m3 <= 15) return 885.61 + m3 * 239.35;
+                    if (m3 <= 30) return 1099.01 + m3 * 225.13;
+                    if (m3 <= 100) return 1515.14 + m3 * 211.26;
+                    return 2101.99 + m3 * 205.39;
+                }
+            }
+        ],
+        notes: [
+            '料金は概算の参考値です。燃料費調整額・再エネ賦課金は含まれていません。',
+            '実際の料金は時期や使用状況により異なります。契約前に各社の公式サイトをご確認ください。',
+            '電気料金は30A契約を想定しています。アンペア数により基本料金が変わります。',
+            'イデックスでんきは新規受付を終了しています。既存契約者向けの参考情報として掲載しています。',
+            'オクトパスエナジーは燃料費調整額の上限がありません。市場価格により変動幅が大きい場合があります。',
+            '楽天でんきは市場価格調整額が別途変動します。ポイント還元は計算に含まれていません。',
+            '西部ガス ヒナタメリットは西部ガスの電気とのセットプランです。ガス単体でも契約可能です。'
+        ]
     }
 };
 
